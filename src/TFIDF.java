@@ -150,10 +150,10 @@ public class TFIDF extends Configured implements Tool {
       }
       Configuration config = context.getConfiguration();
       this.caseSensitive = config.getBoolean("wordcount.case.sensitive", false);
-      if (config.getBoolean("wordcount.skip.patterns", false)) {
+      /*if (config.getBoolean("wordcount.skip.patterns", false)) {
         URI[] localPaths = context.getCacheFiles();
         parseSkipFile(localPaths[0]);
-      }
+      }*/
     }
 
     private void parseSkipFile(URI patternsURI) {
