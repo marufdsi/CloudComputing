@@ -37,8 +37,8 @@ public class TFIDF extends Configured implements Tool {
   }
 
   public int run(String[] args) throws Exception {
-    /*Job tf_job = Job.getInstance(getConf(), "termfrequency");
-    for (int i = 0; i < args.length; i += 1) {
+    Job tf_job = Job.getInstance(getConf(), "termfrequency");
+    /*for (int i = 0; i < args.length; i += 1) {
       if ("-skip".equals(args[i])) {
         tf_job.getConfiguration().setBoolean("wordcount.skip.patterns", true);
         i += 1;
@@ -46,7 +46,7 @@ public class TFIDF extends Configured implements Tool {
         // this demonstrates logging
         LOG.info("Added file to the distributed cache: " + args[i]);
       }
-    }
+    }*/
     tf_job.setJarByClass(this.getClass());
     // Use TextInputFormat, the default unless job.setInputFormatClass is used
     FileInputFormat.addInputPath(tf_job, new Path(args[0]));
@@ -57,7 +57,7 @@ public class TFIDF extends Configured implements Tool {
     tf_job.setOutputKeyClass(Text.class);
     tf_job.setOutputValueClass(IntWritable.class);
     int code = tf_job.waitForCompletion(true) ? 0 : 1;
-*/
+
     // TF-IDF
     Job tfidf_job = Job.getInstance(getConf(), "tfidf");
     tfidf_job.setJarByClass(this.getClass());
@@ -68,7 +68,7 @@ public class TFIDF extends Configured implements Tool {
     tfidf_job.setReducerClass(TFIDFReduce.class);
     tfidf_job.setOutputKeyClass(Text.class);
     tfidf_job.setOutputValueClass(NullWritable.class);
-    int code = tfidf_job.waitForCompletion(true) ? 0 : 1;
+    code = tfidf_job.waitForCompletion(true) ? 0 : 1;
 
     return code;
   }
