@@ -68,7 +68,7 @@ public class TFIDF extends Configured implements Tool {
     tfidf_job.setReducerClass(TFIDFReduce.class);
     tfidf_job.setOutputKeyClass(Text.class);
     tfidf_job.setOutputValueClass(NullWritable.class);
-    int code = tf_job.waitForCompletion(true) ? 0 : 1;
+    int code = tfidf_job.waitForCompletion(true) ? 0 : 1;
 
     return code;
   }
