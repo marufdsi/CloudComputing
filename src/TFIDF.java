@@ -67,7 +67,7 @@ public class TFIDF extends Configured implements Tool {
     tfidf_job.setMapperClass(TFIDFMap.class);
     tfidf_job.setReducerClass(TFIDFReduce.class);
     tfidf_job.setOutputKeyClass(Text.class);
-    tfidf_job.setOutputValueClass(IntWritable.class);
+    tfidf_job.setOutputValueClass(NullWritable.class);
     code = tf_job.waitForCompletion(true) ? 0 : 1;
 
     return code;
@@ -189,8 +189,8 @@ public class TFIDF extends Configured implements Tool {
         if (line.isEmpty()) {
             return;
         }
-            currentWord = new Text(angularOutput(line, filename, 1));
-            context.write(currentWord, NullWritable.get());
+        currentWord = new Text(angularOutput(line, filename, 1));
+        context.write(currentWord, NullWritable.get());
 
     }
 
