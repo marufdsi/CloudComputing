@@ -185,6 +185,7 @@ public class TFIDF extends Configured implements Tool {
       if (!caseSensitive) {
         line = line.toLowerCase();
       }
+      System.out.println("Line: " + line);
       Text currentWord = new Text();
         if (line.isEmpty()) {
             return;
