@@ -62,8 +62,8 @@ public class TFIDF extends Configured implements Tool {
     Job tfidf_job = Job.getInstance(getConf(), "tfidf");
     tfidf_job.setJarByClass(this.getClass());
     // Use TextInputFormat, the default unless job.setInputFormatClass is used
-    FileInputFormat.addInputPath(tfidf_job, new Path(args[0]));
-    FileOutputFormat.setOutputPath(tfidf_job, new Path(args[1]));
+    FileInputFormat.addInputPath(tfidf_job, new Path(args[1]));
+    FileOutputFormat.setOutputPath(tfidf_job, new Path(args[2]));
     tfidf_job.setMapperClass(TFIDFMap.class);
     tfidf_job.setReducerClass(TFIDFReduce.class);
     tfidf_job.setOutputKeyClass(Text.class);
