@@ -90,12 +90,14 @@ public class TFIDF extends Configured implements Tool {
             FileSplit fileSplit = (FileSplit) context.getInputSplit();
             String filename = fileSplit.getPath().getName();
             String line = lineText.toString();
+            line = line.trim();
             if (!caseSensitive) {
                 line = line.toLowerCase();
             }
             Text currentWord = new Text();
             for (String word : WORD_BOUNDARY.split(line)) {
-                if (word.isEmpty() || patternsToSkip.contains(word)) {
+                word = word.trim();
+                if (word.isEmpty() || patternsToSkip.contains(word) || !word.matches(".*[a-zA-Z]+.*")) {
                     continue;
                 }
                 currentWord = new Text(word + "#####" + filename);
@@ -124,6 +126,7 @@ public class TFIDF extends Configured implements Tool {
             FileSplit fileSplit = (FileSplit) context.getInputSplit();
             String filename = fileSplit.getPath().getName();
             String line = lineText.toString();
+            line = line.trim();
             if (!caseSensitive) {
                 line = line.toLowerCase();
             }

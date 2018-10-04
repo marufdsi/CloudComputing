@@ -24,10 +24,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.net.URI;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.regex.Pattern;
 
 public class Search extends Configured implements Tool {
@@ -40,7 +37,12 @@ public class Search extends Configured implements Tool {
     }
 
     public int run(String[] args) throws Exception {
-        Job job = Job.getInstance(getConf(), "search");
+        Configuration conf = getConf();
+        Scanner input = new Scanner(System.in);
+        System.out.println("Enter Search Strings:");
+        conf.set("SEARCH_STRINGS", input.nextLine());
+
+        Job job = Job.getInstance(conf, "search");
         job.setJarByClass(this.getClass());
         FileInputFormat.addInputPath(job, new Path(args[0]));
         FileOutputFormat.setOutputPath(job, new Path(args[1]));
@@ -56,6 +58,8 @@ public class Search extends Configured implements Tool {
         private final static IntWritable one = new IntWritable(1);
         private boolean caseSensitive = false;
         private String input;
+        private static final Pattern WORD_BOUNDARY = Pattern.compile("\\s*\\b\\s*");
+
         protected void setup(Mapper.Context context)
                 throws IOException,
                 InterruptedException {
@@ -72,17 +76,30 @@ public class Search extends Configured implements Tool {
             FileSplit fileSplit = (FileSplit) context.getInputSplit();
             String filename = fileSplit.getPath().getName();
             String line = lineText.toString();
+            line = line.trim();
+            String searchItems = context.getConfiguration().get("SEARCH_STRINGS");
             if (!caseSensitive) {
                 line = line.toLowerCase();
+                searchItems = searchItems.toLowerCase();
             }
             if (line.isEmpty()) {
                 return;
             }
             String[] tokens = line.split("#####");
-            if (tokens.length>=2) {
-                String[] values = tokens[1].split("\\s");
-                if(values.length>=2)
-                    context.write(new Text(values[0]), new DoubleWritable(Double.valueOf(values[1])));
+
+            if (!tokens[0].isEmpty() && tokens.length>=2) {
+                boolean matchFound = false;
+                for(String searchWord: WORD_BOUNDARY.split(searchItems)){
+                    if (searchWord.equalsIgnoreCase(tokens[0])){
+                        matchFound = true;
+                        break;
+                    }
+                }
+                if (matchFound) {
+                    String[] values = tokens[1].split("\\s");
+                    if (values.length >= 2)
+                        context.write(new Text(values[0]), new DoubleWritable(Double.valueOf(values[1])));
+                }
             }
         }
     }
@@ -95,7 +112,7 @@ public class Search extends Configured implements Tool {
             for (DoubleWritable val : values) {
                 TFIDF_Score += val.get();
             }
-            context.write(word, new DoubleWritable(TFIDF_Score));
+            context.write(new Text(word), new DoubleWritable(TFIDF_Score));
         }
     }
 
