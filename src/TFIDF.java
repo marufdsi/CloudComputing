@@ -24,16 +24,11 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.regex.Pattern;
-
-import java.io.DataOutputStream;
-
-import org.apache.hadoop.fs.FSDataOutputStream;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.mapreduce.RecordWriter;
-import org.apache.hadoop.mapreduce.TaskAttemptContext;
 
 public class TFIDF extends Configured implements Tool {
 
@@ -45,16 +40,9 @@ public class TFIDF extends Configured implements Tool {
     }
 
     public int run(String[] args) throws Exception {
-        Job tf_job = Job.getInstance(getConf(), "termfrequency");
-    /*for (int i = 0; i < args.length; i += 1) {
-      if ("-skip".equals(args[i])) {
-        tf_job.getConfiguration().setBoolean("wordcount.skip.patterns", true);
-        i += 1;
-        tf_job.addCacheFile(new Path(args[i]).toUri());
-        // this demonstrates logging
-        LOG.info("Added file to the distributed cache: " + args[i]);
-      }
-    }*/
+        Configuration conf = getConf();
+        conf.set("NUMBER_OF_FILE", args[3]);
+        Job tf_job = Job.getInstance(conf, "termfrequency");
         tf_job.setJarByClass(this.getClass());
         // Use TextInputFormat, the default unless job.setInputFormatClass is used
         FileInputFormat.addInputPath(tf_job, new Path(args[0]));
@@ -67,7 +55,7 @@ public class TFIDF extends Configured implements Tool {
         int code = tf_job.waitForCompletion(true) ? 0 : 1;
 
         // TF-IDF
-        Job tfidf_job = Job.getInstance(getConf(), "tfidf");
+        Job tfidf_job = Job.getInstance(conf, "tfidf");
         tfidf_job.setJarByClass(this.getClass());
         // Use TextInputFormat, the default unless job.setInputFormatClass is used
         FileInputFormat.addInputPath(tfidf_job, new Path(args[1]));
@@ -76,7 +64,7 @@ public class TFIDF extends Configured implements Tool {
         tfidf_job.setReducerClass(TFIDFReduce.class);
         tfidf_job.setOutputKeyClass(Text.class);
         tfidf_job.setOutputValueClass(Text.class);
-        tfidf_job.setOutputFormatClass(XMLOutputFormat.class);
+        //tfidf_job.setOutputFormatClass(XMLOutputFormat.class);
         code = tfidf_job.waitForCompletion(true) ? 0 : 1;
 
         return code;
@@ -84,10 +72,7 @@ public class TFIDF extends Configured implements Tool {
 
     public static class Map extends Mapper<LongWritable, Text, Text, IntWritable> {
         private final static IntWritable one = new IntWritable(1);
-        private Text word = new Text();
         private boolean caseSensitive = false;
-        private long numRecords = 0;
-        private String input;
         private Set<String> patternsToSkip = new HashSet<String>();
         private static final Pattern WORD_BOUNDARY = Pattern.compile("\\s*\\b\\s*");
 
@@ -99,26 +84,7 @@ public class TFIDF extends Configured implements Tool {
             } else {
                 this.input = context.getInputSplit().toString();
             }
-            Configuration config = context.getConfiguration();
-            this.caseSensitive = config.getBoolean("wordcount.case.sensitive", false);
-            if (config.getBoolean("wordcount.skip.patterns", false)) {
-                URI[] localPaths = context.getCacheFiles();
-                parseSkipFile(localPaths[0]);
-            }
-        }
-
-        private void parseSkipFile(URI patternsURI) {
-            LOG.info("Added file to the distributed cache: " + patternsURI);
-            try {
-                BufferedReader fis = new BufferedReader(new FileReader(new File(patternsURI.getPath()).getName()));
-                String pattern;
-                while ((pattern = fis.readLine()) != null) {
-                    patternsToSkip.add(pattern);
-                }
-            } catch (IOException ioe) {
-                System.err.println("Caught exception while parsing the cached file '"
-                        + patternsURI + "' : " + StringUtils.stringifyException(ioe));
-            }
+            this.caseSensitive = false;
         }
 
         public void map(LongWritable offset, Text lineText, Context context)
@@ -157,8 +123,7 @@ public class TFIDF extends Configured implements Tool {
             } else {
                 this.input = context.getInputSplit().toString();
             }
-            Configuration config = context.getConfiguration();
-            this.caseSensitive = config.getBoolean("wordcount.case.sensitive", false);
+            this.caseSensitive = false;
         }
 
         public void map(LongWritable offset, Text lineText, Context context)
@@ -169,7 +134,6 @@ public class TFIDF extends Configured implements Tool {
             if (!caseSensitive) {
                 line = line.toLowerCase();
             }
-            Text currentWord = new Text();
             if (line.isEmpty()) {
                 return;
             }
@@ -180,8 +144,6 @@ public class TFIDF extends Configured implements Tool {
                     context.write(new Text(tokens[0]), new Text(values[0] + "=" + values[1]));
             }
         }
-
-
     }
 
     public static class Reduce extends Reducer<Text, IntWritable, Text, DoubleWritable> {
@@ -192,17 +154,33 @@ public class TFIDF extends Configured implements Tool {
             for (IntWritable count : counts) {
                 sum += count.get();
             }
-            context.write(word, new DoubleWritable(1.00 + Math.log(sum)));
+            double TF = 1.00 + Math.log10(sum);
+            if (TF<0){
+                TF = 0.0;
+            }
+            context.write(word, new DoubleWritable(TF));
         }
-
     }
 
-    public static class TFIDFReduce extends Reducer<Text, Text, Text, Text> {
+    public static class TFIDFReduce extends Reducer<Text, Text, Text, DoubleWritable> {
         @Override
         public void reduce(Text word, Iterable<Text> values, Context context)
                 throws IOException, InterruptedException {
+            long totalNumberOfDoc = Long.parseLong(context.getConfiguration().get("NUMBER_OF_FILE"));
+            long numberOfDocContain = 0;
+            List<Text> cache = new ArrayList<Text>();
             for (Text val : values) {
-                context.write(word, val);
+                numberOfDocContain++;
+                cache.add(val);
+            }
+            if (numberOfDocContain == 0)
+                return;
+            double IDF = Math.log10(1 + (totalNumberOfDoc/numberOfDocContain));
+            for (Text val : cache) {
+                String[] tokens = val.toString().split("=");
+                if (tokens.length>=2)
+                    context.write(new Text(word + "#####" + tokens[0]), new DoubleWritable(Double.valueOf(tokens[1])*IDF));
+
             }
         }
     }
@@ -217,69 +195,6 @@ public class TFIDF extends Configured implements Tool {
             }
             context.write(word, new IntWritable(sum));
         }
-    }
-
-    public static class XMLOutputFormat extends FileOutputFormat<Text, Text> {
-
-        protected static class XMLRecordWriter extends RecordWriter<Text, Text> {
-
-            private DataOutputStream out;
-
-            public XMLRecordWriter(DataOutputStream out) throws IOException {
-
-                this.out = out;
-//                out.writeBytes("<Output>\n");
-
-            }
-
-
-            private void writeStyle(String xml_tag, String tag_value) throws IOException {
-
-                out.writeBytes("<" + xml_tag + ">" + tag_value + "</" + xml_tag + ">\n");
-
-            }
-
-            /*public static String angularOutput(String key, String fileName, int count) {
-                StringBuilder sb = new StringBuilder();
-                sb.append("<\"").append(key)
-                        .append("\",\"").append(fileName)
-                        .append("=").append(count).append("\">");
-                return sb.toString();
-            }*/
-
-            public synchronized void write(Text key, Text value) throws IOException {
-                out.writeBytes("<\"" + key + "\",\"" + value + "\">");
-//                this.writeStyle("key", key.toString());
-//                this.writeStyle("value", value.toString());
-//                out.writeBytes("</record>\n");
-            }
-
-            public synchronized void close(TaskAttemptContext job) throws IOException {
-
-                try {
-
-//                    out.writeBytes("</Output>\n");
-
-                } finally {
-
-                    out.close();
-
-                }
-
-            }
-
-        }
-
-        public RecordWriter<Text, Text> getRecordWriter(TaskAttemptContext job) throws IOException {
-
-            String file_extension = ".xml";
-            Path file = getDefaultWorkFile(job, file_extension);
-            FileSystem fs = file.getFileSystem(job.getConfiguration());
-            FSDataOutputStream fileOut = fs.create(file, false);
-            return new XMLRecordWriter(fileOut);
-
-        }
-
     }
 }
 
