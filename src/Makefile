@@ -35,6 +35,13 @@ build-tfidf: TFIDF.java
 	mkdir -p build/tfidf
 	javac -cp /usr/lib/hadoop/*:/usr/lib/hadoop-mapreduce/* TFIDF.java -d build/tfidf -Xlint
 
+search.jar: build/tfidf/Search.class
+	jar -cvf search.jar -C build/search .
+
+build-tfidf: Search.java
+	mkdir -p build/search
+	javac -cp /usr/lib/hadoop/*:/usr/lib/hadoop-mapreduce/* Search.java -d build/search -Xlint
+
 clean:
 	rm -rf build docwordcount.jar
 	rm -rf build termfrequency.jar
@@ -44,6 +51,12 @@ clean-dw:
 
 clean-tf:
 	rm -rf build/termfrequency termfrequency.jar
+
+clean-tfidf:
+	rm -rf build/tfidf tfidf.jar
+
+clean-search:
+	rm -rf build/search search.jar
 
 data:
 	hadoop fs -rm -f -r /user/cloudera/wordcount/input
