@@ -5,7 +5,7 @@ import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.io.DoubleWritable;
 import org.apache.hadoop.io.LongWritable;
-import org.apache.hadoop.io.Text;
+import org.apache.hadoop.io.*;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.Reducer;
@@ -26,6 +26,12 @@ import java.net.URI;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.regex.Pattern;
+
+import java.io.DataOutputStream;
+import org.apache.hadoop.fs.FSDataOutputStream;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.mapreduce.RecordWriter;
+import org.apache.hadoop.mapreduce.TaskAttemptContext;
 
 public class TFIDF extends Configured implements Tool {
 
@@ -55,7 +61,7 @@ public class TFIDF extends Configured implements Tool {
     tf_job.setCombinerClass(Combine.class);
     tf_job.setReducerClass(Reduce.class);
     tf_job.setOutputKeyClass(Text.class);
-    tf_job.setOutputValueClass(IntWritable.class);
+    tf_job.setOutputValueClass(Text.class);
     int code = tf_job.waitForCompletion(true) ? 0 : 1;
 
     // TF-IDF
@@ -67,7 +73,8 @@ public class TFIDF extends Configured implements Tool {
     tfidf_job.setMapperClass(TFIDFMap.class);
     tfidf_job.setReducerClass(TFIDFReduce.class);
     tfidf_job.setOutputKeyClass(Text.class);
-    tfidf_job.setOutputValueClass(NullWritable.class);
+    tfidf_job.setOutputValueClass(IntWritable.class);
+    tfidf_job.setOutputFormatClass(XMLOutputFormat.class);
     code = tfidf_job.waitForCompletion(true) ? 0 : 1;
 
     return code;
@@ -131,7 +138,7 @@ public class TFIDF extends Configured implements Tool {
     }
   }
 
-  public static class TFIDFMap extends Mapper<LongWritable, Text, Text, NullWritable> {
+  public static class TFIDFMap extends Mapper<LongWritable, Text, Text, Text> {
     private final static IntWritable one = new IntWritable(1);
     private Text word = new Text();
     private boolean caseSensitive = false;
@@ -191,7 +198,7 @@ public class TFIDF extends Configured implements Tool {
             return;
         }
         currentWord = new Text(angularOutput(line, filename, 1));
-        context.write(currentWord, NullWritable.get());
+        context.write(key, currentWord);
 
     }
 
@@ -211,11 +218,13 @@ public class TFIDF extends Configured implements Tool {
 
   }
 
-  public static class TFIDFReduce extends Reducer<Text, NullWritable, Text, NullWritable> {
+  public static class TFIDFReduce extends Reducer<Text, Text, Text, Text> {
     @Override
-    public void reduce(Text word, Iterable<NullWritable> counts, Context context)
+    public void reduce(Text word, Iterable<Text> values, Context context)
         throws IOException, InterruptedException {
-      context.write(word, NullWritable.get());
+      for (Text val : values) {
+        context.write(word, val);
+      }
     }
   }
 
@@ -229,6 +238,63 @@ public class TFIDF extends Configured implements Tool {
       }
       context.write(word, new IntWritable(sum));
     }
+  }
+
+  public class XMLOutputFormat extends FileOutputFormat<Text, IntWritable> {
+
+    protected static class XMLRecordWriter extends RecordWriter<Text, IntWritable> {
+
+      private DataOutputStream out;
+
+      public XMLRecordWriter(DataOutputStream out) throws IOException{
+
+        this.out = out;
+        out.writeBytes("<Output>\n");
+
+      }
+
+
+      private void writeStyle(String xml_tag,String tag_value) throws IOException {
+
+        out.writeBytes("<"+xml_tag+">"+tag_value+"</"+xml_tag+">\n");
+
+      }
+
+      public synchronized void write(Text key, IntWritable value) throws IOException {
+
+        out.writeBytes("<record>\n");
+        this.writeStyle("key", key.toString());
+        this.writeStyle("value", value.toString());
+        out.writeBytes("</record>\n");
+
+      }
+
+      public synchronized void close(TaskAttemptContext job) throws IOException {
+
+        try {
+
+          out.writeBytes("</Output>\n");
+
+        } finally {
+
+          out.close();
+
+        }
+
+      }
+
+    }
+
+    public RecordWriter<Text, IntWritable> getRecordWriter(TaskAttemptContext job) throws IOException {
+
+      String file_extension = ".xml";
+      Path file = getDefaultWorkFile(job, file_extension);
+      FileSystem fs = file.getFileSystem(job.getConfiguration());
+      FSDataOutputStream fileOut = fs.create(file, false);
+      return new XMLRecordWriter(fileOut);
+
+    }
+
   }
 }
 
