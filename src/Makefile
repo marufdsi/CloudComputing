@@ -1,6 +1,12 @@
+input=/user/cloudera/wordcount/input
+docoutput=/user/cloudera/wordcount/docoutput
+tfoutput=/user/cloudera/wordcount/tfoutput
+tfidfoutput=/user/cloudera/wordcount/tfidfoutput
+searchoutput=/user/cloudera/wordcount/searchoutput
+
 run: clean-dw build-docwordcount docwordcount.jar jar
-	hadoop fs -rm -f -r  /user/cloudera/wordcount/docoutput
-	hadoop jar docwordcount.jar DocWordCount /user/cloudera/wordcount/input /user/cloudera/wordcount/docoutput
+	hadoop fs -rm -f -r  $(docoutput)
+	hadoop jar docwordcount.jar DocWordCount $(input) $(docoutput)
 
 run-tf: clean-tf build-termfrequency termfrequency.jar tfjar
 	hadoop fs -rm -f -r  /user/cloudera/wordcount/tfoutput
