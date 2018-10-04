@@ -30,81 +30,29 @@ import java.util.List;
 import java.util.Set;
 import java.util.regex.Pattern;
 
-public class TFIDF extends Configured implements Tool {
+public class Search extends Configured implements Tool {
 
-    private static final Logger LOG = Logger.getLogger(TFIDF.class);
+    private static final Logger LOG = Logger.getLogger(Search.class);
 
     public static void main(String[] args) throws Exception {
-        int res = ToolRunner.run(new TFIDF(), args);
+        int res = ToolRunner.run(new Search(), args);
         System.exit(res);
     }
 
     public int run(String[] args) throws Exception {
-        Configuration conf = getConf();
-        conf.set("NUMBER_OF_FILE", args[3]);
-        Job tf_job = Job.getInstance(conf, "termfrequency");
-        tf_job.setJarByClass(this.getClass());
-        // Use TextInputFormat, the default unless job.setInputFormatClass is used
-        FileInputFormat.addInputPath(tf_job, new Path(args[0]));
-        FileOutputFormat.setOutputPath(tf_job, new Path(args[1]));
-        tf_job.setMapperClass(Map.class);
-        tf_job.setCombinerClass(Combine.class);
-        tf_job.setReducerClass(Reduce.class);
-        tf_job.setOutputKeyClass(Text.class);
-        tf_job.setOutputValueClass(IntWritable.class);
-        int code = tf_job.waitForCompletion(true) ? 0 : 1;
-
-        // TF-IDF
-        Job tfidf_job = Job.getInstance(conf, "tfidf");
-        tfidf_job.setJarByClass(this.getClass());
-        FileInputFormat.addInputPath(tfidf_job, new Path(args[1]));
-        FileOutputFormat.setOutputPath(tfidf_job, new Path(args[2]));
-        tfidf_job.setMapperClass(TFIDFMap.class);
-        tfidf_job.setReducerClass(TFIDFReduce.class);
-        tfidf_job.setOutputKeyClass(Text.class);
-        tfidf_job.setOutputValueClass(Text.class);
-        code = tfidf_job.waitForCompletion(true) ? 0 : 1;
-
-        return code;
+        Job job = Job.getInstance(getConf(), "search");
+        job.setJarByClass(this.getClass());
+        FileInputFormat.addInputPath(job, new Path(args[0]));
+        FileOutputFormat.setOutputPath(job, new Path(args[1]));
+        job.setMapperClass(Map.class);
+        job.setCombinerClass(Combine.class);
+        job.setReducerClass(Reduce.class);
+        job.setOutputKeyClass(Text.class);
+        job.setOutputValueClass(DoubleWritable.class);
+        return job.waitForCompletion(true) ? 0 : 1;
     }
 
-    public static class Map extends Mapper<LongWritable, Text, Text, IntWritable> {
-        private final static IntWritable one = new IntWritable(1);
-        private boolean caseSensitive = false;
-        private Set<String> patternsToSkip = new HashSet<String>();
-        private static final Pattern WORD_BOUNDARY = Pattern.compile("\\s*\\b\\s*");
-
-        protected void setup(Mapper.Context context)
-                throws IOException,
-                InterruptedException {
-            if (context.getInputSplit() instanceof FileSplit) {
-                this.input = ((FileSplit) context.getInputSplit()).getPath().toString();
-            } else {
-                this.input = context.getInputSplit().toString();
-            }
-            this.caseSensitive = false;
-        }
-
-        public void map(LongWritable offset, Text lineText, Context context)
-                throws IOException, InterruptedException {
-            FileSplit fileSplit = (FileSplit) context.getInputSplit();
-            String filename = fileSplit.getPath().getName();
-            String line = lineText.toString();
-            if (!caseSensitive) {
-                line = line.toLowerCase();
-            }
-            Text currentWord = new Text();
-            for (String word : WORD_BOUNDARY.split(line)) {
-                if (word.isEmpty() || patternsToSkip.contains(word)) {
-                    continue;
-                }
-                currentWord = new Text(word + "#####" + filename);
-                context.write(currentWord, one);
-            }
-        }
-    }
-
-    public static class TFIDFMap extends Mapper<LongWritable, Text, Text, Text> {
+    public static class Map extends Mapper<LongWritable, Text, Text, DoubleWritable> {
         private final static IntWritable one = new IntWritable(1);
         private boolean caseSensitive = false;
 
@@ -134,58 +82,32 @@ public class TFIDF extends Configured implements Tool {
             if (tokens.length>=2) {
                 String[] values = tokens[1].split("\\s");
                 if(values.length>=2)
-                    context.write(new Text(tokens[0]), new Text(values[0] + "=" + values[1]));
+                    context.write(new Text(values[0]), new DoubleWritable(Double.valueOf(values[1])));
             }
         }
     }
 
-    public static class Reduce extends Reducer<Text, IntWritable, Text, DoubleWritable> {
+    public static class Reduce extends Reducer<Text, DoubleWritable, Text, DoubleWritable> {
         @Override
-        public void reduce(Text word, Iterable<IntWritable> counts, Context context)
+        public void reduce(Text word, Iterable<IntWritable> values, Context context)
                 throws IOException, InterruptedException {
-            int sum = 0;
-            for (IntWritable count : counts) {
-                sum += count.get();
+            double TFIDF_Score = 0;
+            for (DoubleWritable val : values) {
+                TFIDF_Score += val.get();
             }
-            double TF = 1.00 + Math.log10(sum);
-            if (TF<0){
-                TF = 0.0;
-            }
-            context.write(word, new DoubleWritable(TF));
+            context.write(word, new DoubleWritable(TFIDF_Score));
         }
     }
 
-    public static class TFIDFReduce extends Reducer<Text, Text, Text, DoubleWritable> {
+    public static class Combine extends Reducer<Text, DoubleWritable, Text, DoubleWritable> {
         @Override
-        public void reduce(Text word, Iterable<Text> values, Context context)
+        public void reduce(Text word, Iterable<IntWritable> values, Context context)
                 throws IOException, InterruptedException {
-            long totalNumberOfDoc = Long.parseLong(context.getConfiguration().get("NUMBER_OF_FILE"));
-            long numberOfDocContain = 0;
-            List<Text> cache = new ArrayList<Text>();
-            for (Text val : values) {
-                numberOfDocContain++;
-                cache.add(val);
+            double TFIDF_Score = 0;
+            for (DoubleWritable val : values) {
+                TFIDF_Score += val.get();
             }
-            if (numberOfDocContain == 0)
-                return;
-            double IDF = Math.log10(1 + (totalNumberOfDoc/numberOfDocContain));
-            for (Text val : cache) {
-                String[] tokens = val.toString().split("=");
-                if (tokens.length>=2)
-                    context.write(new Text(word + "#####" + tokens[0]), new DoubleWritable(Double.valueOf(tokens[1])*IDF));
-            }
-        }
-    }
-
-    public static class Combine extends Reducer<Text, IntWritable, Text, IntWritable> {
-        @Override
-        public void reduce(Text word, Iterable<IntWritable> counts, Context context)
-                throws IOException, InterruptedException {
-            int sum = 0;
-            for (IntWritable count : counts) {
-                sum += count.get();
-            }
-            context.write(word, new IntWritable(sum));
+            context.write(word, new IntWritable(TFIDF_Score));
         }
     }
 }
