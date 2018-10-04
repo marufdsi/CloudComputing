@@ -73,7 +73,7 @@ public class TFIDF extends Configured implements Tool {
         private boolean caseSensitive = false;
         private Set<String> patternsToSkip = new HashSet<String>();
         private static final Pattern WORD_BOUNDARY = Pattern.compile("\\s*\\b\\s*");
-
+        private String input;
         protected void setup(Mapper.Context context)
                 throws IOException,
                 InterruptedException {
@@ -107,7 +107,7 @@ public class TFIDF extends Configured implements Tool {
     public static class TFIDFMap extends Mapper<LongWritable, Text, Text, Text> {
         private final static IntWritable one = new IntWritable(1);
         private boolean caseSensitive = false;
-
+        private String input;
         protected void setup(Mapper.Context context)
                 throws IOException,
                 InterruptedException {

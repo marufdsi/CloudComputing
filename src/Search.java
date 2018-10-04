@@ -55,7 +55,7 @@ public class Search extends Configured implements Tool {
     public static class Map extends Mapper<LongWritable, Text, Text, DoubleWritable> {
         private final static IntWritable one = new IntWritable(1);
         private boolean caseSensitive = false;
-
+        private String input;
         protected void setup(Mapper.Context context)
                 throws IOException,
                 InterruptedException {
@@ -89,7 +89,7 @@ public class Search extends Configured implements Tool {
 
     public static class Reduce extends Reducer<Text, DoubleWritable, Text, DoubleWritable> {
         @Override
-        public void reduce(Text word, Iterable<IntWritable> values, Context context)
+        public void reduce(Text word, Iterable<DoubleWritable> values, Context context)
                 throws IOException, InterruptedException {
             double TFIDF_Score = 0;
             for (DoubleWritable val : values) {
@@ -101,13 +101,13 @@ public class Search extends Configured implements Tool {
 
     public static class Combine extends Reducer<Text, DoubleWritable, Text, DoubleWritable> {
         @Override
-        public void reduce(Text word, Iterable<IntWritable> values, Context context)
+        public void reduce(Text word, Iterable<DoubleWritable> values, Context context)
                 throws IOException, InterruptedException {
             double TFIDF_Score = 0;
             for (DoubleWritable val : values) {
                 TFIDF_Score += val.get();
             }
-            context.write(word, new IntWritable(TFIDF_Score));
+            context.write(word, new DoubleWritable(TFIDF_Score));
         }
     }
 }
