@@ -3,41 +3,33 @@ docoutput=/user/cloudera/wordcount/docoutput
 tfoutput=/user/cloudera/wordcount/tfoutput
 tfidfoutput=/user/cloudera/wordcount/tfidfoutput
 searchoutput=/user/cloudera/wordcount/searchoutput
+NUMBER_OF_DOCUMENT=8
 
-run: clean-dw build-docwordcount docwordcount.jar jar
+run-doc: clean-dw build-docwordcount doc-jar
 	hadoop fs -rm -f -r  $(docoutput)
 	hadoop jar docwordcount.jar DocWordCount $(input) $(docoutput)
 
-run-tf: clean-tf build-termfrequency termfrequency.jar tfjar
-	hadoop fs -rm -f -r  /user/cloudera/wordcount/tfoutput
-	hadoop jar termfrequency.jar TermFrequency /user/cloudera/wordcount/input /user/cloudera/wordcount/tfoutput
+run-tf: clean-tf build-termfrequency tf-jar
+	hadoop fs -rm -f -r  $(tfoutput)
+	hadoop jar termfrequency.jar TermFrequency $(input) $(tfoutput)
 
-run-tfidf: clean-tfidf build-tfidf tfidf.jar tfidfjar
-	hadoop fs -rm -f -r  /user/cloudera/wordcount/tf_output
-	hadoop fs -rm -f -r  /user/cloudera/wordcount/tfidfoutput
-	hadoop jar tfidf.jar TFIDF /user/cloudera/wordcount/input /user/cloudera/wordcount/tf_output /user/cloudera/wordcount/tfidfoutput 8
+run-tfidf: clean-tfidf build-tfidf tfidf-jar
+	hadoop fs -rm -f -r  $(tfoutput)
+	hadoop fs -rm -f -r  $(tfidfoutput)
+	hadoop jar tfidf.jar TFIDF $(input) $(tfoutput) $(tfidfoutput) $(NUMBER_OF_DOCUMENT)
 
-run-search: clean-search build-search search.jar searchjar
-	hadoop fs -rm -f -r  /user/cloudera/wordcount/searchoutput
-	hadoop jar search.jar Search /user/cloudera/wordcount/tfidfoutput /user/cloudera/wordcount/searchoutput
+run-search: clean-search build-search search-jar
+	hadoop fs -rm -f -r  $(searchoutput)
+	hadoop jar search.jar Search $(tfidfoutput) $(searchoutput)
 
-run_caseSensitive: jar
-	hadoop fs -rm -f -r  /user/cloudera/wordcount/docoutput
-	hadoop jar wordcount.jar org.myorg.WordCount -Dwordcount.case.sensitive=true /user/cloudera/wordcount/input /user/cloudera/wordcount/docoutput
 
-run_stopwords: jar stopwords
-	hadoop fs -rm -f -r  /user/cloudera/wordcount/docoutput
-	hadoop jar docwordcount.jar DocWordCount /user/cloudera/wordcount/input /user/cloudera/wordcount/docoutput -skip /user/cloudera/wordcount/stop_words.text
+doc-jar: docwordcount.jar
 
-compile: build/org/myorg/DocWordCount.class
+tf-jar: termfrequency.jar
 
-jar: docwordcount.jar
+tfidf-jar: tfidf.jar
 
-tfjar: termfrequency.jar
-
-tfidfjar: tfidf.jar
-
-searchjar: search.jar
+search-jar: search.jar
 
 docwordcount.jar: build/docwordcount/DocWordCount.class
 	jar -cvf docwordcount.jar -C build/docwordcount .
@@ -68,8 +60,11 @@ build-search: Search.java
 	javac -cp /usr/lib/hadoop/*:/usr/lib/hadoop-mapreduce/* Search.java -d build/search -Xlint
 
 clean:
-	rm -rf build docwordcount.jar
-	rm -rf build termfrequency.jar
+	rm -rf build docwordcount.jar termfrequency.jar tfidf.jar search.jar
+	hadoop fs -rm -f -r  $(docoutput)
+	hadoop fs -rm -f -r  $(tfoutput)
+	hadoop fs -rm -f -r  $(tfidfoutput)
+	hadoop fs -rm -f -r  $(searchoutput)
 
 clean-dw:
 	rm -rf build/docwordcount docwordcount.jar
@@ -87,33 +82,18 @@ data:
 	hadoop fs -rm -f -r /user/cloudera/wordcount/input
 	hadoop fs -mkdir /user/cloudera/wordcount
 	hadoop fs -mkdir /user/cloudera/wordcount/input
-	echo "Hadoop is an elephant" > file0
-	echo "Hadoop is as yellow as can be" > file1
-	echo "Oh what a yellow fellow is Hadoop" > file2
-	hadoop fs -put file* /user/cloudera/wordcount/input
-	rm file*
+	hadoop fs -put $1* /user/cloudera/wordcount/input
 
-poetry:
-	hadoop fs -rm -f -r /user/cloudera/wordcount/input
-	hadoop fs -mkdir /user/cloudera/wordcount/input
-	echo -e "Hadoop is the Elephant King! \\nA yellow and elegant thing.\\nHe never forgets\\nUseful data, or lets\\nAn extraneous element cling! "> HadoopPoem0.txt
-	echo -e "A wonderful king is Hadoop.\\nThe elephant plays well with Sqoop.\\nBut what helps him to thrive\\nAre Impala, and Hive,\\nAnd HDFS in the group." > HadoopPoem1.txt
-	echo -e "Hadoop is an elegant fellow.\\nAn elephant gentle and mellow.\\nHe never gets mad,\\nOr does anything bad,\\nBecause, at his core, he is yellow." > HadoopPoem2.txt
-	hadoop fs -put HadoopP* /user/cloudera/wordcount/input
-	rm HadoopPoem*
-gettfoutput:
-	rm -r /home/cloudera/Assignment2/tf_output.out
-	hadoop fs -get  /user/cloudera/wordcount/tf_output/part-r-00000  /home/cloudera/Assignment2/tf_output.out
+get-doc-word-count:
+	hadoop fs -get  $(docoutput)/part-r-00000  $1
 
-gettfidfoutput:
-	rm -r /home/cloudera/Assignment2/tfidfoutput.out
-	hadoop fs -get  /user/cloudera/wordcount/tfidfoutput/part-r-00000  /home/cloudera/Assignment2/tfidfoutput.out
+get-tf-output:
+	hadoop fs -get  $(tfoutput)/part-r-00000  $1
 
-showResult:
-	hadoop fs -cat /user/cloudera/wordcount/output/*
-	
-stopwords:
-	hadoop fs -rm -f /user/cloudera/wordcount/stop_words.text
-	echo -e "a\\nan\\nand\\nbut\\nis\\nor\\nthe\\nto\\n.\\n," >stop_words.text
-	hadoop fs -put stop_words.text /user/cloudera/wordcount/
+get-tfidf-output:
+	hadoop fs -get  $(tfidfoutput)/part-r-00000  $1
+
+get-search-output:
+	hadoop fs -get  $(searchoutput)/part-r-00000  $1
+
 
