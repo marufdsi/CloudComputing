@@ -198,7 +198,7 @@ public class TFIDF extends Configured implements Tool {
             return;
         }
         currentWord = new Text(angularOutput(line, filename, 1));
-        context.write(key, currentWord);
+        context.write("word", currentWord);
 
     }
 
@@ -240,7 +240,7 @@ public class TFIDF extends Configured implements Tool {
     }
   }
 
-  public class XMLOutputFormat extends FileOutputFormat<Text, IntWritable> {
+  public static class XMLOutputFormat extends FileOutputFormat<Text, IntWritable> {
 
     protected static class XMLRecordWriter extends RecordWriter<Text, IntWritable> {
 
