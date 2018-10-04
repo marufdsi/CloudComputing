@@ -61,7 +61,7 @@ public class TFIDF extends Configured implements Tool {
     tf_job.setCombinerClass(Combine.class);
     tf_job.setReducerClass(Reduce.class);
     tf_job.setOutputKeyClass(Text.class);
-    tf_job.setOutputValueClass(Text.class);
+    tf_job.setOutputValueClass(IntWritable.class);
     int code = tf_job.waitForCompletion(true) ? 0 : 1;
 
     // TF-IDF
@@ -73,7 +73,7 @@ public class TFIDF extends Configured implements Tool {
     tfidf_job.setMapperClass(TFIDFMap.class);
     tfidf_job.setReducerClass(TFIDFReduce.class);
     tfidf_job.setOutputKeyClass(Text.class);
-    tfidf_job.setOutputValueClass(IntWritable.class);
+    tfidf_job.setOutputValueClass(Text.class);
     tfidf_job.setOutputFormatClass(XMLOutputFormat.class);
     code = tfidf_job.waitForCompletion(true) ? 0 : 1;
 
