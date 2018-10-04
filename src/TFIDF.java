@@ -160,11 +160,11 @@ public class TFIDF extends Configured implements Tool {
         }
     }
 
-    public static class TFIDFReduce extends Reducer<Text, Text, Text, DoubleWritable> {
+    public static class TFIDFReduce extends Reducer<Text, Text, Text, Text> {
         @Override
         public void reduce(Text word, Iterable<Text> values, Context context)
                 throws IOException, InterruptedException {
-            long totalNumberOfDoc = Long.parseLong(context.getConfiguration().get("NUMBER_OF_FILE"));
+            /*long totalNumberOfDoc = Long.parseLong(context.getConfiguration().get("NUMBER_OF_FILE"));
             long numberOfDocContain = 0;
             List<Text> cache = new ArrayList<Text>();
             for (Text val : values) {
@@ -173,12 +173,16 @@ public class TFIDF extends Configured implements Tool {
             }
             if (numberOfDocContain == 0)
                 return;
-            double IDF = Math.log10(1 + (totalNumberOfDoc/numberOfDocContain));
-            for (Text val : cache) {
-                String[] tokens = val.toString().split("=");
+            double IDF = Math.log10(1 + (totalNumberOfDoc/numberOfDocContain));*/
+            String data = "";
+            for (Text val : values) {
+                context.write(word, val);
+//                data += val.toString() + " ";
+                /*String[] tokens = val.toString().split("=");
                 if (tokens.length>=2)
-                    context.write(new Text(word + "#####" + tokens[0]), new DoubleWritable(Double.valueOf(tokens[1])*IDF));
+                    context.write(new Text(word + "#####" + tokens[0]), new DoubleWritable(Double.valueOf(tokens[1])*IDF));*/
             }
+//            context.write(word, new Text(data));
         }
     }
 
