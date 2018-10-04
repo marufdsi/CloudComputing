@@ -38,7 +38,7 @@ build-tfidf: TFIDF.java
 search.jar: build/tfidf/Search.class
 	jar -cvf search.jar -C build/search .
 
-build-tfidf: Search.java
+build-search: Search.java
 	mkdir -p build/search
 	javac -cp /usr/lib/hadoop/*:/usr/lib/hadoop-mapreduce/* Search.java -d build/search -Xlint
 
