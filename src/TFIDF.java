@@ -198,7 +198,7 @@ public class TFIDF extends Configured implements Tool {
             return;
         }
         currentWord = new Text(angularOutput(line, filename, 1));
-        context.write("word", currentWord);
+        context.write(new Text("word"), currentWord);
 
     }
 
