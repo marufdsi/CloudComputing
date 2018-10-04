@@ -42,7 +42,7 @@ public class TFIDF extends Configured implements Tool {
     public int run(String[] args) throws Exception {
         Configuration conf = getConf();
         conf.set("NUMBER_OF_FILE", args[3]);
-        /*Job tf_job = Job.getInstance(conf, "termfrequency");
+        Job tf_job = Job.getInstance(conf, "termfrequency");
         tf_job.setJarByClass(this.getClass());
         // Use TextInputFormat, the default unless job.setInputFormatClass is used
         FileInputFormat.addInputPath(tf_job, new Path(args[0]));
@@ -53,18 +53,18 @@ public class TFIDF extends Configured implements Tool {
         tf_job.setOutputKeyClass(Text.class);
         tf_job.setOutputValueClass(IntWritable.class);
         int code = tf_job.waitForCompletion(true) ? 0 : 1;
-*/
+
         // TF-IDF
         Job tfidf_job = Job.getInstance(conf, "tfidf");
         tfidf_job.setJarByClass(this.getClass());
         FileInputFormat.addInputPath(tfidf_job, new Path(args[1]));
         FileOutputFormat.setOutputPath(tfidf_job, new Path(args[2]));
         tfidf_job.setMapperClass(TFIDFMap.class);
-        tfidf_job.setCombinerClass(TFIDFCombine.class);
+//        tfidf_job.setCombinerClass(TFIDFCombine.class);
         tfidf_job.setReducerClass(TFIDFReduce.class);
         tfidf_job.setOutputKeyClass(Text.class);
         tfidf_job.setOutputValueClass(Text.class);
-        int code = tfidf_job.waitForCompletion(true) ? 0 : 1;
+        code = tfidf_job.waitForCompletion(true) ? 0 : 1;
 
         return code;
     }
@@ -137,10 +137,10 @@ public class TFIDF extends Configured implements Tool {
 
             String[] tokens = WORD_BOUNDARY.split(line);
             if (tokens.length>=2) {
-                context.write(new Text(tokens[0]), new Text(tokens[1]));
-               /* String[] values = tokens[1].trim().split("\\s+");
+               // context.write(new Text(tokens[0]), new Text(tokens[1]));
+                String[] values = tokens[1].trim().split("\\s+");
                 if(values.length>=2)
-                    context.write(new Text(tokens[0]), new Text(values[0] + "=" + values[1]));*/
+                    context.write(new Text(tokens[0]), new Text(values[0] + "=" + values[1]));
             }
         }
     }
@@ -161,29 +161,25 @@ public class TFIDF extends Configured implements Tool {
         }
     }
 
-    public static class TFIDFReduce extends Reducer<Text, Text, Text, Text> {
+    public static class TFIDFReduce extends Reducer<Text, Text, Text, DoubleWritable> {
         @Override
         public void reduce(Text word, Iterable<Text> values, Context context)
                 throws IOException, InterruptedException {
-            /*long totalNumberOfDoc = Long.parseLong(context.getConfiguration().get("NUMBER_OF_FILE"));
+            long totalNumberOfDoc = Long.parseLong(context.getConfiguration().get("NUMBER_OF_FILE"));
             long numberOfDocContain = 0;
-            List<Text> cache = new ArrayList<Text>();
+            List<String> cache = new ArrayList<String>();
             for (Text val : values) {
                 numberOfDocContain++;
-                cache.add(val);
+                cache.add(val.toString());
             }
             if (numberOfDocContain == 0)
                 return;
-            double IDF = Math.log10(1 + (totalNumberOfDoc/numberOfDocContain));*/
-            String data = "";
-            for (Text val : values) {
-                context.write(word, val);
-//                data += val.toString() + " ";
-                /*String[] tokens = val.toString().split("=");
+            double IDF = Math.log10(1 + (totalNumberOfDoc/numberOfDocContain));
+            for (int i=0; i<cache.size(); ++i) {
+                String[] tokens = cache.get(i).split("=");
                 if (tokens.length>=2)
-                    context.write(new Text(word + "#####" + tokens[0]), new DoubleWritable(Double.valueOf(tokens[1])*IDF));*/
+                    context.write(new Text(word + "#####" + tokens[0]), new DoubleWritable(Double.valueOf(tokens[1])*IDF));
             }
-//            context.write(word, new Text(data));
         }
     }
 
@@ -199,7 +195,7 @@ public class TFIDF extends Configured implements Tool {
         }
     }
 
-  public static class TFIDFCombine extends Reducer<Text, Text, Text, Text> {
+  /*public static class TFIDFCombine extends Reducer<Text, Text, Text, Text> {
     @Override
     public void reduce(Text word, Iterable<Text> values, Context context)
             throws IOException, InterruptedException {
@@ -207,6 +203,6 @@ public class TFIDF extends Configured implements Tool {
         context.write(word, val);
       }
     }
-  }
+  }*/
 }
 

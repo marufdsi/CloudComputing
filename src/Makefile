@@ -1,27 +1,37 @@
-run: jar
+run: clean-dw build-docwordcount docwordcount.jar jar
 	hadoop fs -rm -f -r  /user/cloudera/wordcount/docoutput
-	hadoop jar wordcount.jar org.myorg.WordCount /user/cloudera/wordcount/input /user/cloudera/wordcount/docoutput
+	hadoop jar docwordcount.jar DocWordCount /user/cloudera/wordcount/input /user/cloudera/wordcount/docoutput
 
-run-tfidf: jar
+run-tf: clean-tf build-termfrequency termfrequency.jar tfjar
+	hadoop fs -rm -f -r  /user/cloudera/wordcount/tfoutput
+	hadoop jar termfrequency.jar TermFrequency /user/cloudera/wordcount/input /user/cloudera/wordcount/tfoutput
+
+run-tfidf: clean-tfidf build-tfidf tfidf.jar tfidfjar
 	hadoop fs -rm -f -r  /user/cloudera/wordcount/tf_output
 	hadoop fs -rm -f -r  /user/cloudera/wordcount/tfidfoutput
 	hadoop jar tfidf.jar TFIDF /user/cloudera/wordcount/input /user/cloudera/wordcount/tf_output /user/cloudera/wordcount/tfidfoutput 8
 
-run-search: jar
+run-search: clean-search build-search search.jar searchjar
 	hadoop fs -rm -f -r  /user/cloudera/wordcount/searchoutput
 	hadoop jar search.jar Search /user/cloudera/wordcount/tfidfoutput /user/cloudera/wordcount/searchoutput
 
 run_caseSensitive: jar
 	hadoop fs -rm -f -r  /user/cloudera/wordcount/docoutput
-	hadoop jar wordcount.jar org.myorg.WordCount -Dwordcount.case.sensitive=true /user/cloudera/wordcount/input /user/cloudera/wordcount/docoutput 
+	hadoop jar wordcount.jar org.myorg.WordCount -Dwordcount.case.sensitive=true /user/cloudera/wordcount/input /user/cloudera/wordcount/docoutput
 
 run_stopwords: jar stopwords
-	hadoop fs -rm -f -r  /user/cloudera/wordcount/output
-	hadoop jar wordcount.jar org.myorg.WordCount /user/cloudera/wordcount/input /user/cloudera/wordcount/docoutput -skip /user/cloudera/wordcount/stop_words.text
+	hadoop fs -rm -f -r  /user/cloudera/wordcount/docoutput
+	hadoop jar docwordcount.jar DocWordCount /user/cloudera/wordcount/input /user/cloudera/wordcount/docoutput -skip /user/cloudera/wordcount/stop_words.text
 
 compile: build/org/myorg/DocWordCount.class
 
 jar: docwordcount.jar
+
+tfjar: termfrequency.jar
+
+tfidfjar: tfidf.jar
+
+searchjar: search.jar
 
 docwordcount.jar: build/docwordcount/DocWordCount.class
 	jar -cvf docwordcount.jar -C build/docwordcount .
@@ -44,7 +54,7 @@ build-tfidf: TFIDF.java
 	mkdir -p build/tfidf
 	javac -cp /usr/lib/hadoop/*:/usr/lib/hadoop-mapreduce/* TFIDF.java -d build/tfidf -Xlint
 
-search.jar: build/tfidf/Search.class
+search.jar: build/search/Search.class
 	jar -cvf search.jar -C build/search .
 
 build-search: Search.java
@@ -85,6 +95,13 @@ poetry:
 	echo -e "Hadoop is an elegant fellow.\\nAn elephant gentle and mellow.\\nHe never gets mad,\\nOr does anything bad,\\nBecause, at his core, he is yellow." > HadoopPoem2.txt
 	hadoop fs -put HadoopP* /user/cloudera/wordcount/input
 	rm HadoopPoem*
+gettfoutput:
+	rm -r /home/cloudera/Assignment2/tf_output.out
+	hadoop fs -get  /user/cloudera/wordcount/tf_output/part-r-00000  /home/cloudera/Assignment2/tf_output.out
+
+gettfidfoutput:
+	rm -r /home/cloudera/Assignment2/tfidfoutput.out
+	hadoop fs -get  /user/cloudera/wordcount/tfidfoutput/part-r-00000  /home/cloudera/Assignment2/tfidfoutput.out
 
 showResult:
 	hadoop fs -cat /user/cloudera/wordcount/output/*
