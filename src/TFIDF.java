@@ -57,14 +57,12 @@ public class TFIDF extends Configured implements Tool {
         // TF-IDF
         Job tfidf_job = Job.getInstance(conf, "tfidf");
         tfidf_job.setJarByClass(this.getClass());
-        // Use TextInputFormat, the default unless job.setInputFormatClass is used
         FileInputFormat.addInputPath(tfidf_job, new Path(args[1]));
         FileOutputFormat.setOutputPath(tfidf_job, new Path(args[2]));
         tfidf_job.setMapperClass(TFIDFMap.class);
         tfidf_job.setReducerClass(TFIDFReduce.class);
         tfidf_job.setOutputKeyClass(Text.class);
         tfidf_job.setOutputValueClass(Text.class);
-        //tfidf_job.setOutputFormatClass(XMLOutputFormat.class);
         code = tfidf_job.waitForCompletion(true) ? 0 : 1;
 
         return code;
@@ -108,12 +106,7 @@ public class TFIDF extends Configured implements Tool {
 
     public static class TFIDFMap extends Mapper<LongWritable, Text, Text, Text> {
         private final static IntWritable one = new IntWritable(1);
-        private Text word = new Text();
         private boolean caseSensitive = false;
-        private long numRecords = 0;
-        private String input;
-        private Set<String> patternsToSkip = new HashSet<String>();
-        private static final Pattern WORD_BOUNDARY = Pattern.compile("\\s*\\b\\s*");
 
         protected void setup(Mapper.Context context)
                 throws IOException,
@@ -180,7 +173,6 @@ public class TFIDF extends Configured implements Tool {
                 String[] tokens = val.toString().split("=");
                 if (tokens.length>=2)
                     context.write(new Text(word + "#####" + tokens[0]), new DoubleWritable(Double.valueOf(tokens[1])*IDF));
-
             }
         }
     }
