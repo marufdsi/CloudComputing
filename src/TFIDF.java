@@ -42,7 +42,7 @@ public class TFIDF extends Configured implements Tool {
     public int run(String[] args) throws Exception {
         Configuration conf = getConf();
         conf.set("NUMBER_OF_FILE", args[3]);
-        Job tf_job = Job.getInstance(conf, "termfrequency");
+        /*Job tf_job = Job.getInstance(conf, "termfrequency");
         tf_job.setJarByClass(this.getClass());
         // Use TextInputFormat, the default unless job.setInputFormatClass is used
         FileInputFormat.addInputPath(tf_job, new Path(args[0]));
@@ -53,7 +53,7 @@ public class TFIDF extends Configured implements Tool {
         tf_job.setOutputKeyClass(Text.class);
         tf_job.setOutputValueClass(IntWritable.class);
         int code = tf_job.waitForCompletion(true) ? 0 : 1;
-
+*/
         // TF-IDF
         Job tfidf_job = Job.getInstance(conf, "tfidf");
         tfidf_job.setJarByClass(this.getClass());
@@ -63,7 +63,7 @@ public class TFIDF extends Configured implements Tool {
         tfidf_job.setReducerClass(TFIDFReduce.class);
         tfidf_job.setOutputKeyClass(Text.class);
         tfidf_job.setOutputValueClass(Text.class);
-        code = tfidf_job.waitForCompletion(true) ? 0 : 1;
+        int code = tfidf_job.waitForCompletion(true) ? 0 : 1;
 
         return code;
     }
@@ -109,6 +109,7 @@ public class TFIDF extends Configured implements Tool {
     public static class TFIDFMap extends Mapper<LongWritable, Text, Text, Text> {
         private final static IntWritable one = new IntWritable(1);
         private boolean caseSensitive = false;
+        private static final Pattern WORD_BOUNDARY = Pattern.compile("#####");
         private String input;
         protected void setup(Mapper.Context context)
                 throws IOException,
@@ -124,7 +125,6 @@ public class TFIDF extends Configured implements Tool {
         public void map(LongWritable offset, Text lineText, Context context)
                 throws IOException, InterruptedException {
             FileSplit fileSplit = (FileSplit) context.getInputSplit();
-            String filename = fileSplit.getPath().getName();
             String line = lineText.toString();
             line = line.trim();
             if (!caseSensitive) {
@@ -133,11 +133,12 @@ public class TFIDF extends Configured implements Tool {
             if (line.isEmpty()) {
                 return;
             }
-            String[] tokens = line.split("#####");
+            String[] tokens = WORD_BOUNDARY.split(line);
             if (tokens.length>=2) {
-                String[] values = tokens[1].split("\\s");
+                context.write(new Text(tokens[0]), new Text(tokens[1]));
+               /* String[] values = tokens[1].trim().split("\\s+");
                 if(values.length>=2)
-                    context.write(new Text(tokens[0]), new Text(values[0] + "=" + values[1]));
+                    context.write(new Text(tokens[0]), new Text(values[0] + "=" + values[1]));*/
             }
         }
     }
@@ -158,7 +159,7 @@ public class TFIDF extends Configured implements Tool {
         }
     }
 
-    public static class TFIDFReduce extends Reducer<Text, Text, Text, DoubleWritable> {
+    public static class TFIDFReduce extends Reducer<Text, Text, Text, Text> {
         @Override
         public void reduce(Text word, Iterable<Text> values, Context context)
                 throws IOException, InterruptedException {
@@ -172,11 +173,14 @@ public class TFIDF extends Configured implements Tool {
             if (numberOfDocContain == 0)
                 return;
             double IDF = Math.log10(1 + (totalNumberOfDoc/numberOfDocContain));
+            String data = "";
             for (Text val : cache) {
-                String[] tokens = val.toString().split("=");
+                data += val.toString() + " ";
+                /*String[] tokens = val.toString().split("=");
                 if (tokens.length>=2)
-                    context.write(new Text(word + "#####" + tokens[0]), new DoubleWritable(Double.valueOf(tokens[1])*IDF));
+                    context.write(new Text(word + "#####" + tokens[0]), new DoubleWritable(Double.valueOf(tokens[1])*IDF));*/
             }
+            context.write(word, new Text(data));
         }
     }
 
