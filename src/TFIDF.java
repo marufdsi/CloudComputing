@@ -240,9 +240,9 @@ public class TFIDF extends Configured implements Tool {
     }
   }
 
-  public static class XMLOutputFormat extends FileOutputFormat<Text, IntWritable> {
+  public static class XMLOutputFormat extends FileOutputFormat<Text, Text> {
 
-    protected static class XMLRecordWriter extends RecordWriter<Text, IntWritable> {
+    protected static class XMLRecordWriter extends RecordWriter<Text, Text> {
 
       private DataOutputStream out;
 
@@ -260,7 +260,7 @@ public class TFIDF extends Configured implements Tool {
 
       }
 
-      public synchronized void write(Text key, IntWritable value) throws IOException {
+      public synchronized void write(Text key, Text value) throws IOException {
 
         out.writeBytes("<record>\n");
         this.writeStyle("key", key.toString());
@@ -285,7 +285,7 @@ public class TFIDF extends Configured implements Tool {
 
     }
 
-    public RecordWriter<Text, IntWritable> getRecordWriter(TaskAttemptContext job) throws IOException {
+    public RecordWriter<Text, Text> getRecordWriter(TaskAttemptContext job) throws IOException {
 
       String file_extension = ".xml";
       Path file = getDefaultWorkFile(job, file_extension);
