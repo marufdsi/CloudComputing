@@ -2,6 +2,15 @@ run: jar
 	hadoop fs -rm -f -r  /user/cloudera/wordcount/docoutput
 	hadoop jar wordcount.jar org.myorg.WordCount /user/cloudera/wordcount/input /user/cloudera/wordcount/docoutput
 
+run-tfidf: jar
+	hadoop fs -rm -f -r  /user/cloudera/wordcount/tf_output
+	hadoop fs -rm -f -r  /user/cloudera/wordcount/tfidfoutput
+	hadoop jar tfidf.jar TFIDF /user/cloudera/wordcount/input /user/cloudera/wordcount/tf_output /user/cloudera/wordcount/tfidfoutput 8
+
+run-search: jar
+	hadoop fs -rm -f -r  /user/cloudera/wordcount/searchoutput
+	hadoop jar search.jar Search /user/cloudera/wordcount/tfidfoutput /user/cloudera/wordcount/searchoutput
+
 run_caseSensitive: jar
 	hadoop fs -rm -f -r  /user/cloudera/wordcount/docoutput
 	hadoop jar wordcount.jar org.myorg.WordCount -Dwordcount.case.sensitive=true /user/cloudera/wordcount/input /user/cloudera/wordcount/docoutput 
