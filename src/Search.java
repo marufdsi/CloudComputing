@@ -42,28 +42,40 @@ public class Search extends Configured implements Tool {
 
     public int run(String[] args) throws Exception {
         Configuration conf = getConf();
+        /// Take the input from user for search
         Scanner input = new Scanner(System.in);
         System.out.println("Enter Search Strings:");
+        /// Add the search string in the configuaration to process at Mapper class
         conf.set("SEARCH_STRINGS", input.nextLine());
-
+        /// creating the job
         Job job = Job.getInstance(conf, "search");
         job.setJarByClass(this.getClass());
+        /// Get the input file from the first parameter and add to the input path
         FileInputFormat.addInputPath(job, new Path(args[0]));
+        /// Get the output file location from the second parameter and add to the output path
         FileOutputFormat.setOutputPath(job, new Path(args[1]));
+        /// Add Mapper Class
         job.setMapperClass(Map.class);
+        /// Add Combiner Class
         job.setCombinerClass(Combine.class);
+        /// Add Reduce Class
         job.setReducerClass(Reduce.class);
+        /// Set intermediate output key as Text
         job.setOutputKeyClass(Text.class);
+        /// Set intermediate output value as Double format
         job.setOutputValueClass(DoubleWritable.class);
         return job.waitForCompletion(true) ? 0 : 1;
     }
 
+    /// Map Class
     public static class Map extends Mapper<LongWritable, Text, Text, DoubleWritable> {
         private final static IntWritable one = new IntWritable(1);
         private boolean caseSensitive = false;
         private String input;
+        /// Pattern to split the input line
         private static final Pattern WORD_BOUNDARY = Pattern.compile("\\s*\\b\\s*");
 
+        /// Setup the input and case sensitivity
         protected void setup(Mapper.Context context)
                 throws IOException,
                 InterruptedException {
@@ -72,60 +84,73 @@ public class Search extends Configured implements Tool {
             } else {
                 this.input = context.getInputSplit().toString();
             }
+            /// Make case sensitive false for this project
             this.caseSensitive = false;
         }
 
         public void map(LongWritable offset, Text lineText, Context context)
                 throws IOException, InterruptedException {
             FileSplit fileSplit = (FileSplit) context.getInputSplit();
-            String filename = fileSplit.getPath().getName();
+            /// get the input line as string and trim it.
             String line = lineText.toString();
             line = line.trim();
+            /// Retrieve the search strings
             String searchItems = context.getConfiguration().get("SEARCH_STRINGS");
             if (!caseSensitive) {
+                /// make it lower case
                 line = line.toLowerCase();
                 searchItems = searchItems.toLowerCase();
             }
             if (line.isEmpty()) {
                 return;
             }
+            /// Split the line by "#####"
             String[] tokens = line.split("#####");
 
             if (!tokens[0].isEmpty() && tokens.length>=2) {
                 boolean matchFound = false;
                 for(String searchWord: WORD_BOUNDARY.split(searchItems)){
+                    /// Check search string contains the whole word
                     if (searchWord.equalsIgnoreCase(tokens[0])){
                         matchFound = true;
                         break;
                     }
                 }
+                /// Check if match found
                 if (matchFound) {
+                    /// split file name and value of the TF-IDF
                     String[] values = tokens[1].split("\\s");
-                    if (values.length >= 2)
+                    if (values.length >= 2) {
+                        /// Output file name and TF-IDF score
                         context.write(new Text(values[0]), new DoubleWritable(Double.valueOf(values[1])));
+                    }
                 }
             }
         }
     }
 
+    /// Reduce class
     public static class Reduce extends Reducer<Text, DoubleWritable, Text, DoubleWritable> {
         @Override
         public void reduce(Text word, Iterable<DoubleWritable> values, Context context)
                 throws IOException, InterruptedException {
             double TFIDF_Score = 0;
             for (DoubleWritable val : values) {
+                /// Sum all the TF-IDF score
                 TFIDF_Score += val.get();
             }
             context.write(new Text(word), new DoubleWritable(TFIDF_Score));
         }
     }
 
+    /// Combiner class
     public static class Combine extends Reducer<Text, DoubleWritable, Text, DoubleWritable> {
         @Override
         public void reduce(Text word, Iterable<DoubleWritable> values, Context context)
                 throws IOException, InterruptedException {
             double TFIDF_Score = 0;
             for (DoubleWritable val : values) {
+                /// Sum all the TF-IDF score
                 TFIDF_Score += val.get();
             }
             context.write(word, new DoubleWritable(TFIDF_Score));

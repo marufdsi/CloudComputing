@@ -40,37 +40,36 @@ public class TermFrequency extends Configured implements Tool {
   }
 
   public int run(String[] args) throws Exception {
+    /// creating the job
     Job job = Job.getInstance(getConf(), "termfrequency");
-    for (int i = 0; i < args.length; i += 1) {
-      if ("-skip".equals(args[i])) {
-        job.getConfiguration().setBoolean("wordcount.skip.patterns", true);
-        i += 1;
-        job.addCacheFile(new Path(args[i]).toUri());
-        // this demonstrates logging
-        LOG.info("Added file to the distributed cache: " + args[i]);
-      }
-    }
     job.setJarByClass(this.getClass());
-    // Use TextInputFormat, the default unless job.setInputFormatClass is used
+    /// Get the input file from the first parameter and add to the input path
     FileInputFormat.addInputPath(job, new Path(args[0]));
+    /// Get the output file location from the second parameter and add to the output path
     FileOutputFormat.setOutputPath(job, new Path(args[1]));
+    /// Add Mapper Class
     job.setMapperClass(Map.class);
+    /// Add Combiner Class
     job.setCombinerClass(Combine.class);
+    /// Add Reduce Class
     job.setReducerClass(Reduce.class);
+    /// Set intermediate output key as Text
     job.setOutputKeyClass(Text.class);
+    /// Set intermediate output value as Integer format
     job.setOutputValueClass(IntWritable.class);
     return job.waitForCompletion(true) ? 0 : 1;
   }
 
+  /// Map Class
   public static class Map extends Mapper<LongWritable, Text, Text, IntWritable> {
     private final static IntWritable one = new IntWritable(1);
     private Text word = new Text();
     private boolean caseSensitive = false;
-    private long numRecords = 0;
     private String input;
-    private Set<String> patternsToSkip = new HashSet<String>();
+    /// Pattern to split the input line
     private static final Pattern WORD_BOUNDARY = Pattern.compile("\\s*\\b\\s*");
 
+    /// Setup the input and case sensitivity
     protected void setup(Mapper.Context context)
         throws IOException,
         InterruptedException {
@@ -80,66 +79,59 @@ public class TermFrequency extends Configured implements Tool {
         this.input = context.getInputSplit().toString();
       }
       Configuration config = context.getConfiguration();
-      this.caseSensitive = config.getBoolean("wordcount.case.sensitive", false);
-      if (config.getBoolean("wordcount.skip.patterns", false)) {
-        URI[] localPaths = context.getCacheFiles();
-        parseSkipFile(localPaths[0]);
-      }
-    }
-
-    private void parseSkipFile(URI patternsURI) {
-      LOG.info("Added file to the distributed cache: " + patternsURI);
-      try {
-        BufferedReader fis = new BufferedReader(new FileReader(new File(patternsURI.getPath()).getName()));
-        String pattern;
-        while ((pattern = fis.readLine()) != null) {
-          patternsToSkip.add(pattern);
-        }
-      } catch (IOException ioe) {
-        System.err.println("Caught exception while parsing the cached file '"
-            + patternsURI + "' : " + StringUtils.stringifyException(ioe));
-      }
+      /// Make case sensitive false for this project
+      this.caseSensitive = false;
     }
 
     public void map(LongWritable offset, Text lineText, Context context)
         throws IOException, InterruptedException {
       FileSplit fileSplit = (FileSplit)context.getInputSplit();
+      /// Get the file name, because we need it for the output
       String filename = fileSplit.getPath().getName();
+      /// get the input line as string and trim it.
       String line = lineText.toString();
       line = line.trim();
       if (!caseSensitive) {
+        /// make it lower case
         line = line.toLowerCase();
       }
       Text currentWord = new Text();
       for (String word : WORD_BOUNDARY.split(line)) {
         word = word.trim();
-        if (word.isEmpty() || patternsToSkip.contains(word) || !word.matches(".*[a-zA-Z]+.*")) {
+        /// Check the input line is empty or does not conatain any alphabet
+        if (word.isEmpty() || !word.matches(".*[a-zA-Z]+.*")) {
             continue;
         }
-            currentWord = new Text(word + "#####" + filename);
-            context.write(currentWord, one);
-        }             
+        /// Create desired outout format
+        currentWord = new Text(word + "#####" + filename);
+        context.write(currentWord, one);
+      }
     }
   }
 
+  /// Reduce class
   public static class Reduce extends Reducer<Text, IntWritable, Text, DoubleWritable> {
     @Override
     public void reduce(Text word, Iterable<IntWritable> counts, Context context)
         throws IOException, InterruptedException {
       int sum = 0;
       for (IntWritable count : counts) {
+        /// Sum all the count
         sum += count.get();
       }
+      /// Calculate term frequesncy and write the output
       context.write(word, new DoubleWritable(1.00+Math.log(sum)));
     }
   }
 
+  /// Combiner class
   public static class Combine extends Reducer<Text, IntWritable, Text, IntWritable> {
     @Override
     public void reduce(Text word, Iterable<IntWritable> counts, Context context)
             throws IOException, InterruptedException {
       int sum = 0;
       for (IntWritable count : counts) {
+        /// Sum all the count
         sum += count.get();
       }
       context.write(word, new IntWritable(sum));
