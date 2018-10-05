@@ -2,6 +2,7 @@
  * Md Maruf Hossain
  * mhossa10@uncc.edu
  **/
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.fs.Path;
@@ -174,10 +175,10 @@ public class TFIDF extends Configured implements Tool {
 
             /// Split the line by "#####"
             String[] tokens = WORD_BOUNDARY.split(line);
-            if (tokens.length>=2) {
-               // context.write(new Text(tokens[0]), new Text(tokens[1]));
+            if (tokens.length >= 2) {
+                // context.write(new Text(tokens[0]), new Text(tokens[1]));
                 String[] values = tokens[1].trim().split("\\s+");
-                if(values.length>=2) {
+                if (values.length >= 2) {
                     /// Create desired outout format
                     context.write(new Text(tokens[0]), new Text(values[0] + "=" + values[1]));
                 }
@@ -195,7 +196,7 @@ public class TFIDF extends Configured implements Tool {
                 sum += count.get();
             }
             double TF = 1.00 + Math.log10(sum);
-            if (TF<0){
+            if (TF < 0) {
                 TF = 0.0;
             }
             context.write(word, new DoubleWritable(TF));
@@ -220,11 +221,11 @@ public class TFIDF extends Configured implements Tool {
             if (numberOfDocContain == 0)
                 return;
             /// Calculate the TF-IDF
-            double IDF = Math.log10(1 + (totalNumberOfDoc/numberOfDocContain));
-            for (int i=0; i<cache.size(); ++i) {
+            double IDF = Math.log10(1 + (totalNumberOfDoc / numberOfDocContain));
+            for (int i = 0; i < cache.size(); ++i) {
                 /// Split the values by "="
                 String[] tokens = cache.get(i).split("=");
-                if (tokens.length>=2) {
+                if (tokens.length >= 2) {
                     /// Write the output as desired output format
                     context.write(new Text(word + "#####" + tokens[0]), new DoubleWritable(Double.valueOf(tokens[1]) * IDF));
                 }

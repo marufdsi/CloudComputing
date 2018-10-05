@@ -2,6 +2,7 @@
  * Md Maruf Hossain
  * mhossa10@uncc.edu
  **/
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.fs.Path;
@@ -107,11 +108,11 @@ public class Search extends Configured implements Tool {
             /// Split the line by "#####"
             String[] tokens = line.split("#####");
 
-            if (!tokens[0].isEmpty() && tokens.length>=2) {
+            if (!tokens[0].isEmpty() && tokens.length >= 2) {
                 boolean matchFound = false;
-                for(String searchWord: WORD_BOUNDARY.split(searchItems)){
+                for (String searchWord : WORD_BOUNDARY.split(searchItems)) {
                     /// Check search string contains the whole word
-                    if (searchWord.equalsIgnoreCase(tokens[0])){
+                    if (searchWord.equalsIgnoreCase(tokens[0])) {
                         matchFound = true;
                         break;
                     }
