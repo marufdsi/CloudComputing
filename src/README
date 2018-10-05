@@ -11,6 +11,8 @@ The project contains 4 java files
 To build and run the project, I am using Makefile. You can see that I defined some variable in Makefile for input and output.
 You can change the variable as your wish.
 
+Using command prompt got the project directory.
+
 First, we need to create a directory in cloudera for input and output.
 Here I am using /user/cloudera/wordcount/ as base directory. To create this directory, you need to execute the below command.
 
