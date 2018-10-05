@@ -1,0 +1,91 @@
+Course: TCS-6190/8190: Cloud Computing for Data AnalysisFall 2018
+Assignment# 2
+
+In this project all the java file compiled and run on cloudera VMWARE machine.
+
+The project contains 4 java files
+    1. DocWordCount.java
+    2. TermFrequency.java
+    3. TFIDF.java
+    4. Search.java
+To build and run the project, I am using Makefile. You can see that I defined some variable in Makefile for input and output.
+You can change the variable as your wish.
+
+First, we need to create a directory in cloudera for input and output.
+Here I am using /user/cloudera/wordcount/ as base directory. To create this directory, you need to execute the below command.
+
+hadoop fs -mkdir /user/cloudera/wordcount
+
+if this directory already exist then use
+
+hadoop fs -rm -f -r /user/cloudera/wordcount
+hadoop fs -mkdir /user/cloudera/wordcount
+
+Now, we a input directory. So we can create a input directory by
+
+hadoop fs -rm -f -r /user/cloudera/wordcount/input
+
+After that, we have put input file into the input directory by:
+
+hadoop fs -put FILE_PATH* /user/cloudera/wordcount/input
+
+If you have multiple file use the same command and after done you need to change the variable named NUMBER_OF_DOCUMENT in the Make file at line 6 by the number of files in the input directory.
+
+So far, we are completed input file setup. Now we need to compile and run the project.
+
+    1. First compile and run document count: To compile and run the document count you have to run below command
+
+        make run-doc
+
+       This command first clean the build and then compile the DocWordCount.java and remove the corresponding output file in case it already exist.
+       Then it will run the code by taking  /user/cloudera/wordcount/input as a input directory and output at /user/cloudera/wordcount/docoutput
+
+       If you want to get the output file at your local directory just run the below command:
+        hadoop fs -get  /user/cloudera/wordcount/docoutput/* LOCAL_FILE_PATH
+
+    2. Compile and run the TermFrequency: To compile and run the term frequency you have to run below command
+
+        make run-tf
+
+       This command first clean and build the TermFrequency.java and remove the corresponding output file.
+       Then it will run the code by taking  /user/cloudera/wordcount/input as a input directory and output at /user/cloudera/wordcount/tfoutput
+
+       If you want to get the output file at your local directory just run the below command:
+           hadoop fs -get  /user/cloudera/wordcount/tfoutput/* LOCAL_FILE_PATH
+
+    3. Compile and run the TFIDF: To compile and run the TFIDF you have to run below command
+
+        make run-tfidf
+
+       This command first clean and build the TFIDF.java and remove the corresponding output file.
+       It has two job: first one calculate the term frequency and second one calculate the TF-IDF.
+       That is why it will create two output file:
+                a: /user/cloudera/wordcount/tfoutput
+                b: /user/cloudera/wordcount/tfidfoutput
+
+       But it will take /user/cloudera/wordcount/input as a input.
+
+
+       If you want to get the output files at your local directory just run the below command:
+           hadoop fs -get  /user/cloudera/wordcount/tfoutput/* LOCAL_FILE_PATH
+           hadoop fs -get  /user/cloudera/wordcount/tfidfoutput/* LOCAL_FILE_PATH
+
+    4. Compile and run the Search: To compile and run the term frequency you have to run below command
+
+        make run-search
+
+        This will give an option to enter your search string by asking "Enter Search Strings:"
+        Then you have to enter the text that you want to search. It will produce the output at /user/cloudera/wordcount/searchoutput
+
+        But most importantly it will take the /user/cloudera/wordcount/tfidfoutput as input.
+
+        If you want to get the output file at your local directory just run the below command:
+            hadoop fs -get  /user/cloudera/wordcount/searchoutput/* LOCAL_FILE_PATH
+
+ Here FILE_PATH or LOCAL_FILE_PATH means file name with directory.
+
+ If you want to clean full project use below command:
+    make clean
+
+ It will remove build file and jar file as well as output file.
+
