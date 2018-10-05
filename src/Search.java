@@ -1,3 +1,7 @@
+/***
+ * Md Maruf Hossain
+ * mhossa10@uncc.edu
+ **/
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.fs.Path;
