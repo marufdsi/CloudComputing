@@ -70,7 +70,7 @@ So far, we are completed input file setup. Now we need to compile and run the pr
            hadoop fs -get  /user/cloudera/wordcount/tfoutput/* LOCAL_FILE_PATH
            hadoop fs -get  /user/cloudera/wordcount/tfidfoutput/* LOCAL_FILE_PATH
 
-    4. Compile and run the Search: To compile and run the term frequency you have to run below command
+    4. Compile and run the Search: Before run this you must have to run the TFIDF task(3). To compile and run the term frequency you have to run below command
 
         make run-search
 
