@@ -78,22 +78,5 @@ clean-tfidf:
 clean-search:
 	rm -rf build/search search.jar
 
-data:
-	hadoop fs -rm -f -r /user/cloudera/wordcount/input
-	hadoop fs -mkdir /user/cloudera/wordcount
-	hadoop fs -mkdir /user/cloudera/wordcount/input
-	hadoop fs -put $1* /user/cloudera/wordcount/input
-
-get-doc-word-count:
-	hadoop fs -get  $(docoutput)/part-r-00000  $1
-
-get-tf-output:
-	hadoop fs -get  $(tfoutput)/part-r-00000  $1
-
-get-tfidf-output:
-	hadoop fs -get  $(tfidfoutput)/part-r-00000  $1
-
-get-search-output:
-	hadoop fs -get  $(searchoutput)/part-r-00000  $1
 
 
